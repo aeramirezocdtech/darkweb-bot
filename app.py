@@ -1,43 +1,53 @@
 import os
-from flask import Flask
-from slackeventsapi import SlackEventAdapter
+import re
+from flask import Flask, request
 from slack_sdk import WebClient
-from dotenv import load_dotenv
-from pathlib import Path
+from slackeventsapi import SlackEventAdapter
 
-# Cargar variables de entorno
-env_path = Path('.') / '.env'
-load_dotenv(dotenv_path=env_path)
-
+# App Flask
 app = Flask(__name__)
 
-# Adaptador de eventos de Slack
-slack_event_adapter = SlackEventAdapter(
-    os.environ['SIGNING_SECRET'], "/slack/events", app
+# Slack Event Adapter para manejar eventos desde Slack
+slack_events_adapter = SlackEventAdapter(
+    os.environ["SLACK_SIGNING_SECRET"], "/slack/events", app
 )
 
 # Cliente de Slack
-client = WebClient(token=os.environ['SLACK_TOKEN'])
+client = WebClient(token=os.environ["SLACK_BOT_TOKEN"])
 
-# Evento: cuando alguien envía un mensaje
-@slack_event_adapter.on("message")
+# Evento: mensaje recibido
+@slack_events_adapter.on("message")
 def handle_message(event_data):
     message = event_data["event"]
+    text = message.get("text", "")
+    channel = message.get("channel")
+    user = message.get("user")
 
-    if message.get("subtype") is None:
-        user = message["user"]
-        text = message["text"]
-        channel = message["channel"]
+    if user is None or "bot_id" in message:
+        return  # Ignora mensajes de bots o sin usuario
 
-        if "scan" in text.lower():
+    # Verifica si contiene 'scan' y extrae correo
+    if "scan" in text.lower():
+        match = re.search(r"[\w\.-]+@[\w\.-]+\.\w+", text)
+        if match:
+            email = match.group(0)
             client.chat_postMessage(
                 channel=channel,
-                text=f"<@{user}> recibido. Estoy preparando el reporte de DarkWeb..."
+                text=f"<@{user}> recibido. Estoy preparando el reporte de DarkWeb para: `{email}`"
+            )
+        else:
+            client.chat_postMessage(
+                channel=channel,
+                text=f"<@{user}> no encontré un correo válido en tu mensaje. Usa el formato `scan correo@dominio.com`."
             )
 
-@app.route("/", methods=["GET"])
-def index():
-    return "Bot activo.", 200
+    elif "hola" in text.lower():
+        client.chat_postMessage(
+            channel=channel,
+            text=f"👋 ¡Hola <@{user}>! Escribe `scan correo@dominio.com` para iniciar un escaneo."
+        )
 
-if __name__ == "__main__":
-    app.run(debug=True)
+# Ruta raíz opcional para verificar despliegue
+@app.route("/", methods=["GET"])
+def home():
+    return "Bot activo", 200
