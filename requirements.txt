@@ -1,5 +1,5 @@
 Flask
 python-dotenv
-slack
+slack_sdk
 slackeventsapi
 gunicorn

@@ -1,7 +1,7 @@
 import os
 from flask import Flask
 from slackeventsapi import SlackEventAdapter
-from slack import WebClient
+from slack_sdk import WebClient
 from dotenv import load_dotenv
 from pathlib import Path
 
