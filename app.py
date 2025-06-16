@@ -1,53 +1,45 @@
 import os
-import re
-from flask import Flask, request
+from flask import Flask, request, make_response, jsonify
 from slack_sdk import WebClient
-from slackeventsapi import SlackEventAdapter
+from slack_sdk.errors import SlackApiError
 
-# App Flask
 app = Flask(__name__)
 
-# Slack Event Adapter para manejar eventos desde Slack
-slack_events_adapter = SlackEventAdapter(
-    os.environ["SLACK_SIGNING_SECRET"], "/slack/events", app
-)
+# Slack Token desde variables de entorno
+SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN")
+slack_client = WebClient(token=SLACK_BOT_TOKEN)
 
-# Cliente de Slack
-client = WebClient(token=os.environ["SLACK_BOT_TOKEN"])
-
-# Evento: mensaje recibido
-@slack_events_adapter.on("message")
-def handle_message(event_data):
-    message = event_data["event"]
-    text = message.get("text", "")
-    channel = message.get("channel")
-    user = message.get("user")
-
-    if user is None or "bot_id" in message:
-        return  # Ignora mensajes de bots o sin usuario
-
-    # Verifica si contiene 'scan' y extrae correo
-    if "scan" in text.lower():
-        match = re.search(r"[\w\.-]+@[\w\.-]+\.\w+", text)
-        if match:
-            email = match.group(0)
-            client.chat_postMessage(
-                channel=channel,
-                text=f"<@{user}> recibido. Estoy preparando el reporte de DarkWeb para: `{email}`"
-            )
-        else:
-            client.chat_postMessage(
-                channel=channel,
-                text=f"<@{user}> no encontré un correo válido en tu mensaje. Usa el formato `scan correo@dominio.com`."
-            )
-
-    elif "hola" in text.lower():
-        client.chat_postMessage(
-            channel=channel,
-            text=f"👋 ¡Hola <@{user}>! Escribe `scan correo@dominio.com` para iniciar un escaneo."
-        )
-
-# Ruta raíz opcional para verificar despliegue
 @app.route("/", methods=["GET"])
 def home():
-    return "Bot activo", 200
+    return "Slack bot is running!"
+
+@app.route("/slack/events", methods=["POST"])
+def slack_events():
+    data = request.get_json()
+    print("🔔 Evento recibido:", data)
+
+    # Validación inicial del challenge (cuando se registra el endpoint)
+    if "challenge" in data:
+        return jsonify({"challenge": data["challenge"]})
+
+    # Procesa eventos reales
+    if data.get("type") == "event_callback":
+        event = data.get("event", {})
+        if event.get("type") == "app_mention":
+            text = event.get("text", "")
+            user = event.get("user")
+            channel = event.get("channel")
+            print(f"📢 Mención detectada de {user} en canal {channel}: {text}")
+
+            try:
+                slack_client.chat_postMessage(
+                    channel=channel,
+                    text="¡Hola! ¿Cómo puedo ayudarte?"
+                )
+            except SlackApiError as e:
+                print(f"❌ Error al enviar mensaje: {e.response['error']}")
+
+    return make_response("OK", 200)
+
+if __name__ == "__main__":
+    app.run(port=10000)
