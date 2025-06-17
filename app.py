@@ -6,11 +6,11 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from dotenv import load_dotenv
 
-load_dotenv()  # Cargar variables desde .env (útil en local)
+load_dotenv()  # Load environment variables from .env (useful locally)
 
 app = Flask(__name__)
 
-# Tokens desde variables de entorno
+# Tokens from environment variables
 SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN")
 VT_API_KEY = os.environ.get("VT_API_KEY")
 
@@ -23,9 +23,9 @@ def home():
 @app.route("/slack/events", methods=["POST"])
 def slack_events():
     data = request.get_json()
-    print("🔔 Evento recibido:", data)
+    print("🔔 Event received:", data)
 
-    # Validación inicial (challenge de Slack)
+    # Initial validation (Slack challenge)
     if "challenge" in data:
         return jsonify({"challenge": data["challenge"]})
 
@@ -35,14 +35,14 @@ def slack_events():
             text = event.get("text", "")
             user = event.get("user")
             channel = event.get("channel")
-            print(f"📢 Mención detectada de {user} en canal {channel}: {text}")
+            print(f"📢 Mention detected from {user} in channel {channel}: {text}")
 
             dominio = extraer_dominio(text)
             if dominio:
                 resultado = consultar_virustotal(dominio)
                 mensaje = formatear_respuesta(resultado)
             else:
-                mensaje = "Por favor, indícame qué dominio deseas escanear. Ejemplo: `scan dominio.com`"
+                mensaje = "Please tell me which domain you want to scan. Example: `scan domain.com`"
 
             try:
                 slack_client.chat_postMessage(
@@ -50,27 +50,27 @@ def slack_events():
                     text=mensaje
                 )
             except SlackApiError as e:
-                print(f"❌ Error al enviar mensaje: {e.response['error']}")
+                print(f"❌ Error sending message: {e.response['error']}")
 
     return make_response("OK", 200)
 
 def extraer_dominio(texto):
-    """Extrae el dominio desde un mensaje Slack como '@bot scan dominio.com'"""
-    # Elimina menciones tipo <@UXXXX>
+    """Extract the domain from a Slack message like '@bot scan domain.com'"""
+    # Remove mentions like <@UXXXX>
     texto = re.sub(r"<@[\w]+>", "", texto)
 
-    # Elimina links tipo Slack: <http://...|...> → dominio.com
+    # Remove Slack-formatted links: <http://...|...> → domain.com
     texto = re.sub(r"<http[s]?://[^|]+\|([^>]+)>", r"\1", texto)
 
-    # Elimina http(s):// si llega en texto plano
+    # Remove http(s):// if received in plain text
     texto = texto.replace("http://", "").replace("https://", "")
 
-    # Extrae la palabra después de 'scan'
+    # Extract the word after 'scan'
     match = re.search(r'\bscan\s+([^\s]+)', texto, re.IGNORECASE)
     return match.group(1).strip() if match else None
 
 def consultar_virustotal(dominio):
-    """Consulta la API de VirusTotal con el dominio recibido"""
+    """Query the VirusTotal API with the provided domain"""
     url = f"https://www.virustotal.com/api/v3/domains/{dominio}"
     headers = {
         "x-apikey": VT_API_KEY
@@ -83,7 +83,7 @@ def consultar_virustotal(dominio):
         return {"error": f"Error {response.status_code} - {response.text}"}
 
 def formatear_respuesta(data):
-    """Formatea los resultados en un mensaje para Slack"""
+    """Format the VirusTotal results into a message for Slack"""
     if "error" in data:
         return data["error"]
 
@@ -93,13 +93,13 @@ def formatear_respuesta(data):
     whois = atributos.get("whois_date", None)
 
     mensaje = (
-        f"*🔍 Resultados de VirusTotal:*\n"
-        f"🌐 Dominio: `{data.get('data', {}).get('id', 'desconocido')}`\n"
-        f"🧠 Reputación: `{reputacion}`\n"
-        f"✅ Harmless: {stats.get('harmless', 0)}\n"
-        f"⚠️ Suspicious: {stats.get('suspicious', 0)}\n"
-        f"❌ Malicious: {stats.get('malicious', 0)}\n"
-        f"🧪 Undetected: {stats.get('undetected', 0)}"
+        f"*🔍 VirusTotal Scan Results:*\n"
+        f"1 Domain: `{data.get('data', {}).get('id', 'unknown')}`\n"
+        f"2 Reputation: `{reputacion}`\n"
+        f"3 Harmless: {stats.get('harmless', 0)}\n"
+        f"4 Suspicious: {stats.get('suspicious', 0)}\n"
+        f"5 Malicious: {stats.get('malicious', 0)}\n"
+        f"6 Undetected: {stats.get('undetected', 0)}"
     )
 
     return mensaje
