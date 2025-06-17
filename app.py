@@ -63,7 +63,7 @@ def consultar_virustotal(dominio):
     """Consulta la API de VirusTotal con el dominio recibido"""
     url = f"https://www.virustotal.com/api/v3/domains/{dominio}"
     headers = {
-        "x-apikey": VT_API_KEY
+    "x-apikey": os.getenv("VT_API_KEY").strip()
     }
     response = requests.get(url, headers=headers)
 
