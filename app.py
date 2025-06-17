@@ -55,15 +55,25 @@ def slack_events():
     return make_response("OK", 200)
 
 def extraer_dominio(texto):
-    """Extrae el dominio desde el texto tipo: 'scan dominio.com'"""
+    """Extrae el dominio desde un mensaje Slack como '@bot scan dominio.com'"""
+    # Elimina menciones tipo <@UXXXX>
+    texto = re.sub(r"<@[\w]+>", "", texto)
+
+    # Elimina links tipo Slack: <http://...|...> → dominio.com
+    texto = re.sub(r"<http[s]?://[^|]+\|([^>]+)>", r"\1", texto)
+
+    # Elimina http(s):// si llega en texto plano
+    texto = texto.replace("http://", "").replace("https://", "")
+
+    # Extrae la palabra después de 'scan'
     match = re.search(r'\bscan\s+([^\s]+)', texto, re.IGNORECASE)
-    return match.group(1) if match else None
+    return match.group(1).strip() if match else None
 
 def consultar_virustotal(dominio):
     """Consulta la API de VirusTotal con el dominio recibido"""
     url = f"https://www.virustotal.com/api/v3/domains/{dominio}"
     headers = {
-    "x-apikey": os.getenv("VT_API_KEY").strip()
+        "x-apikey": VT_API_KEY
     }
     response = requests.get(url, headers=headers)
 
@@ -89,7 +99,7 @@ def formatear_respuesta(data):
         f"✅ Harmless: {stats.get('harmless', 0)}\n"
         f"⚠️ Suspicious: {stats.get('suspicious', 0)}\n"
         f"❌ Malicious: {stats.get('malicious', 0)}\n"
-        f"🧪 Undetected: {stats.get('undetected', 0)}\n"
+        f"🧪 Undetected: {stats.get('undetected', 0)}"
     )
 
     return mensaje
