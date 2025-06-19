@@ -85,7 +85,7 @@ def extract_mode(text):
 
 def extraer_dominio(texto):
     """Extract the domain from a Slack message like '@bot scan domain.com'"""
-    texto = re.sub(r"<@["] + "]>", "", texto)
+    texto = re.sub(r"<@[\w]+>", "", texto)
     texto = re.sub(r"<http[s]?://[^|]+\|([^>]+)>", r"\1", texto)
     texto = texto.replace("http://", "").replace("https://", "")
     match = re.search(r'\bscan\s+([^\s]+)', texto, re.IGNORECASE)
