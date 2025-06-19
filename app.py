@@ -78,6 +78,15 @@ def slack_events():
 
     return make_response("OK", 200)
 
+@app.route("/test-dwid")
+def test_dwid():
+    from requests.auth import HTTPBasicAuth
+    resp = requests.get(
+        "https://secure.darkwebid.com/services/compromise.json",
+        auth=HTTPBasicAuth(os.environ.get("DWID_USERNAME"), os.environ.get("DWID_PASSWORD"))
+    )
+    return f"Status: {resp.status_code}, Body: {resp.text}"
+
 def extract_mode(text):
     """Extracts the report mode (monthly, weekly, etc.) from a Slack message."""
     match = re.search(r"darkweb\s+(monthly|weekly|weekly friday)", text, re.IGNORECASE)
