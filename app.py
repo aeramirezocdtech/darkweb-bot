@@ -5,7 +5,7 @@ from flask import Flask, request, make_response, jsonify, send_file
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 from dotenv import load_dotenv
-from darkwebid_module import generate_dwid_reports  # Import the DWID report function
+from darkwebid_module import generate_darkweb_reports  # Import the DWID report function
 
 load_dotenv()  # Load environment variables from .env (useful locally)
 
@@ -42,7 +42,7 @@ def slack_events():
                 modo = extract_mode(text)
                 if modo in ["monthly", "weekly", "weekly friday"]:
                     try:
-                        file_paths = generate_dwid_reports(modo)
+                        file_paths = generate_darkweb_reports(modo)
                         for path in file_paths:
                             slack_client.files_upload(
                                 channels=channel,
