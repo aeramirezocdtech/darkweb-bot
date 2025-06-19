@@ -9,7 +9,7 @@ import calendar
 # Credentials from environment variables
 USERNAME = os.environ.get("DWID_USERNAME")
 PASSWORD = os.environ.get("DWID_PASSWORD")
-BASE_URL = 'https://secure.darkwebid.com/services/compromise.json'
+base_url = os.environ.get("DWID_BASE_URL", "https://secure.darkwebid.com/services/compromise.json")
 
 # Output folder (temporary)
 EXPORT_FOLDER = "/tmp/darkweb_reports"
